@@ -33,12 +33,26 @@ const TimeTrackingChart: React.FC<TimeTrackingChartProps> = ({ days = 7 }) => {
         userService.getUsers()
       ]);
       
+      // Validate the data before processing
+      if (!Array.isArray(tasks) || !Array.isArray(usersData)) {
+        console.error('Invalid data received:', { tasks, usersData });
+        setChartData([]);
+        return;
+      }
+      
       setUsers(usersData);
       setTasks(tasks);
-      const data = processData(tasks, usersData, selectedDays);
-      setChartData(data);
+      
+      try {
+        const data = processData(tasks, usersData, selectedDays);
+        setChartData(data);
+      } catch (processingError) {
+        console.error('Error processing data:', processingError);
+        setChartData([]);
+      }
     } catch (error) {
       console.error('Failed to load data:', error);
+      setChartData([]);
     } finally {
       setLoading(false);
     }
@@ -48,29 +62,60 @@ const TimeTrackingChart: React.FC<TimeTrackingChartProps> = ({ days = 7 }) => {
     const data: ChartData[] = [];
     const today = new Date();
     
+    // Validate today's date
+    if (isNaN(today.getTime())) {
+      console.error('Invalid current date');
+      return [];
+    }
+    
     // For debugging
     console.log('Processing data:', { tasksCount: tasks.length, usersCount: users.length, daysCount });
     console.log('Sample tasks:', tasks.slice(0, 3));
     console.log('Users:', users);
     
-    for (let i = daysCount - 1; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
+    try {
+      for (let i = daysCount - 1; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        
+        // Validate the calculated date
+        if (isNaN(date.getTime())) {
+          console.error(`Invalid calculated date for day ${i}`);
+          continue;
+        }
+        
+        const dateStr = date.toISOString().split('T')[0];
+        
+        const dayData: ChartData = {
+          date: date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+          })
+        };
       
-      const dayData: ChartData = {
-        date: date.toLocaleDateString('en-US', { 
-          month: 'short', 
-          day: 'numeric' 
-        })
-      };
-      
-              users.forEach(user => {
+        users.forEach(user => {
           // Filter tasks by user and date (more flexible matching)
           const userTasks = tasks.filter(task => {
-            const taskDate = new Date(task.createdAt);
-            const taskDateStr = taskDate.toISOString().split('T')[0];
-            return task.userId === user.id && taskDateStr === dateStr;
+            try {
+              // Validate the createdAt date
+              if (!task.createdAt || task.createdAt === 'Invalid Date') {
+                return false;
+              }
+              
+              const taskDate = new Date(task.createdAt);
+              
+              // Check if the date is valid
+              if (isNaN(taskDate.getTime())) {
+                console.warn(`Invalid date for task ${task.id}:`, task.createdAt);
+                return false;
+              }
+              
+              const taskDateStr = taskDate.toISOString().split('T')[0];
+              return task.userId === user.id && taskDateStr === dateStr;
+            } catch (error) {
+              console.warn(`Error processing date for task ${task.id}:`, error, task.createdAt);
+              return false;
+            }
           });
           
           // Calculate total minutes for this user on this date
@@ -88,22 +133,28 @@ const TimeTrackingChart: React.FC<TimeTrackingChartProps> = ({ days = 7 }) => {
         });
         
         // If no data for this day, add some sample data for demonstration
-        if (Object.keys(dayData).filter(key => key !== 'date').every(key => dayData[key] === 0)) {
-          users.forEach(user => {
-            // Add small random sample data for demonstration (remove this in production)
-            const sampleHours = Math.random() * 4 + 1; // 1-5 hours
-            dayData[user.username] = Math.round(sampleHours * 10) / 10;
-          });
-        }
+        // if (Object.keys(dayData).filter(key => key !== 'date').every(key => dayData[key] === 0)) {
+        //   users.forEach(user => {
+        //     // Add small random sample data for demonstration (remove this in production)
+        //     const sampleHours = Math.random() * 4 + 1; // 1-5 hours
+        //     dayData[user.username] = Math.round(sampleHours * 10) / 10;
+        //   });
+        // }
+        
+        data.push(dayData);
+      }
       
-      data.push(dayData);
+      console.log('Processed data:', data);
+      return data;
+    } catch (error) {
+      console.error('Error processing data:', error);
+      // Return empty data array on error
+      return [];
     }
-    
-    console.log('Processed data:', data);
-    return data;
   };
 
   const getTotalHours = (): number => {
+    console.log('Chart data:', chartData);
     const total = chartData.reduce((total, day) => {
       return total + Object.keys(day).reduce((dayTotal, key) => {
         if (key !== 'date') {
