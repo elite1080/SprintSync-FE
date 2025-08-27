@@ -17,6 +17,20 @@ export interface Task {
   updatedAt: string;
 }
 
+export interface TimeLog {
+  total_log_count: string;
+  total_minutes: number;
+  date: string;
+  users: UserTimeLog[];
+}
+
+export interface UserTimeLog {
+  user_id: string;
+  username: string;
+  minutes: number;
+  log_count: number;
+}
+
 export type TaskStatus = 'todo' | 'in_progress' | 'done';
 
 export interface AISuggestion {

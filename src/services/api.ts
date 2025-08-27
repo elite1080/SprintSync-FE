@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { User, Task, AISuggestion, AuthResponse } from '../types';
+import { User, Task, AISuggestion, AuthResponse, TimeLog } from '../types';
 
 const API_BASE_URL = '/api';
 
@@ -63,6 +63,11 @@ export const taskService = {
   getTasks: async (): Promise<Task[]> => {
     const response = await api.get<{ tasks: Task[], message: string, isEmpty: boolean }>('/tasks');
     return response.data.tasks;
+  },
+
+  getTimeTracked: async (): Promise<TimeLog[]> => {
+    const response = await api.get<{ timeLogs: TimeLog[], message: string, isEmpty: boolean }>('/tasks/time-tracking');
+    return response.data.timeLogs;
   },
   
   getTask: async (id: string): Promise<Task> => {
