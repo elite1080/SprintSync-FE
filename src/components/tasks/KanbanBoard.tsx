@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Task, TaskStatus } from '../../types';
-import { taskService } from '../../services/api';
+import { Task, TaskStatus, User } from '../../types';
+import { taskService, userService } from '../../services/api';
 import TaskCard from './TaskCard';
 import { Plus, Loader2 } from 'lucide-react';
 import Button from '../common/Button';
@@ -32,10 +32,21 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const [draggedColumn, setDraggedColumn] = useState<TaskStatus | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
     loadTasks();
+    loadCurrentUser();
   }, []);
+
+  const loadCurrentUser = async () => {
+    try {
+      const user = await userService.getCurrentUser();
+      setCurrentUser(user);
+    } catch (error) {
+      console.error('Failed to load current user:', error);
+    }
+  };
 
   const loadTasks = async () => {
     try {
@@ -118,6 +129,15 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     }
   };
 
+  const handleAssignTask = async (taskId: string, assignedUserId: string) => {
+    try {
+      await taskService.assignTask(taskId, assignedUserId);
+      await loadTasks();
+    } catch (error) {
+      console.error('Failed to assign task:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -174,6 +194,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     onEdit={onEditTask}
                     onDelete={onDeleteTask}
                     onStatusChange={handleStatusChange}
+                    onAssignTask={handleAssignTask}
+                    isAdmin={currentUser?.isAdmin || false}
                   />
                 </div>
               ))}

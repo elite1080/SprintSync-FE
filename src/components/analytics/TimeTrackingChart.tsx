@@ -67,19 +67,38 @@ const TimeTrackingChart: React.FC<TimeTrackingChartProps> = ({ days = 7 }) => {
         setUsers([]);
       }
       
-      try {
-        const data = processTimeTrackingData(timeLogs, usersData, selectedDays, isAdminData);
-        setChartData(data);
-        
-        // Calculate totals
-        const total = calculateTotalHours(data);
-        const average = data.length > 0 ? total / data.length : 0;
-        setTotalHours(total);
-        setAverageHoursPerDay(average);
-      } catch (processingError) {
-        console.error('Error processing time tracking data:', processingError);
-        setChartData([]);
-      }
+             try {
+         const data = processTimeTrackingData(timeLogs, usersData, selectedDays, isAdminData);
+         
+         let finalData = data;
+         
+         // Filter chart data to only include users with time logged (for admin view)
+         if (isAdminData) {
+           finalData = data.map(day => {
+             const filteredDay: ChartData = { date: day.date };
+             
+             // Only include users who have time logged > 0
+             usersData.forEach(user => {
+               if ((day[user.username] as number) > 0) {
+                 filteredDay[user.username] = day[user.username];
+               }
+             });
+             
+             return filteredDay;
+           });
+         }
+         
+         setChartData(finalData);
+         
+         // Calculate totals
+         const total = calculateTotalHours(finalData);
+         const average = finalData.length > 0 ? total / finalData.length : 0;
+         setTotalHours(total);
+         setAverageHoursPerDay(average);
+       } catch (processingError) {
+         console.error('Error processing time tracking data:', processingError);
+         setChartData([]);
+       }
     } catch (error) {
       console.error('Failed to load time tracking data:', error);
       setChartData([]);
@@ -259,28 +278,32 @@ const TimeTrackingChart: React.FC<TimeTrackingChartProps> = ({ days = 7 }) => {
               <XAxis dataKey="date" />
               <YAxis />
               <Tooltip 
-                formatter={(value: number) => [`${value}h`, 'Hours']}
+                formatter={(value: number, name: string) => [`${value}h`, name]}
                 labelFormatter={(label) => `Date: ${label}`}
               />
               <Legend />
-              {isAdmin ? (
-                // Admin view: show bars for each user
-                users.map((user, index) => (
-                  <Bar
-                    key={user.id}
-                    dataKey={user.username}
-                    fill={`hsl(${200 + index * 40}, 70%, 50%)`}
-                    radius={[2, 2, 0, 0]}
-                  />
-                ))
-              ) : (
-                // Non-admin view: show single bar for time tracked
-                <Bar
-                  dataKey="Time Tracked"
-                  fill="hsl(200, 70%, 50%)"
-                  radius={[2, 2, 0, 0]}
-                />
-              )}
+                             {isAdmin ? (
+                 // Admin view: show bars for all users in the filtered data
+                 users
+                   .filter(user => 
+                     chartData.some(day => (day[user.username] as number) > 0)
+                   )
+                   .map((user, index) => (
+                     <Bar
+                       key={user.id}
+                       dataKey={user.username}
+                       fill={`hsl(${200 + index * 40}, 70%, 50%)`}
+                       radius={[2, 2, 0, 0]}
+                     />
+                   ))
+               ) : (
+                 // Non-admin view: show single bar for time tracked
+                 <Bar
+                   dataKey="Time Tracked"
+                   fill="hsl(200, 70%, 50%)"
+                   radius={[2, 2, 0, 0]}
+                 />
+               )}
             </BarChart>
           </ResponsiveContainer>
         ) : (

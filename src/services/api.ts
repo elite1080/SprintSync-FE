@@ -93,6 +93,13 @@ export const taskService = {
   updateTaskStatus: async (id: string, status: Task['status']): Promise<Task> => {
     const response = await api.patch<{ message: string, task: Task }>(`/tasks/${id}/status`, { status });
     return response.data.task;
+  },
+  
+  assignTask: async (taskId: string, assignedUserId: string): Promise<Task> => {
+    const response = await api.post<{ message: string, task: Task }>(`/tasks/${taskId}/assign`, { 
+      assigned_user_id: assignedUserId 
+    });
+    return response.data.task;
   }
 };
 

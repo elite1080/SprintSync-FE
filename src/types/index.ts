@@ -13,6 +13,10 @@ export interface Task {
   status: TaskStatus;
   total_minutes: number;
   userId: string;
+  owner_username?: string;
+  createdBy?: User;
+  assignedUserId?: string;
+  assignedUser?: User;
   createdAt: string;
   updatedAt: string;
 }
